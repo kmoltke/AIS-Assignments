@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PayBud - Payment System for Best Buds</title>
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+  <script type="module" src="api.js"></script>
+  <script type="module" src="token/code.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Open+Sans"/>
+  <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Roboto"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div id="content">
+  <div style="overflow: hidden; height:8.75em; margin:0em">
+    <img src="../paybud.png" style="width:12em">
+  </div>
+  <p>
+    a payment system for the best of buds!
+  </p>
+  <h2>Authenticate</h2>
+  <input type="password" id="token" placeholder="token here..."/>
+  <br>
+  <input type="button" style="display:none" id="sendToken" value="send token"/>
+  <input type="button" style="display:none" id="back" value="back"/>
+  <p/>
+  <div id="response"/>
+</body>
+</html>
