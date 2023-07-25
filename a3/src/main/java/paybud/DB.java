@@ -37,7 +37,6 @@ public class DB {
             c.commit();             // commit transaction
             c.setAutoCommit(true);  // exit transaction mode
             c.close();
-//            createToken(email);
             return true;
         } catch ( Exception e ) {}
         return false; // exception occurred; malformed SQL query?
@@ -45,7 +44,6 @@ public class DB {
 
     public static Optional<String> createToken(final String email) {
         String q = "UPDATE tokens SET token = ?, time = ? WHERE email = ?";
-//        String q = "UPDATE tokens SET token = ? WHERE email = ?";
         try (Connection c = DriverManager.getConnection(URL)){
             String token = generateToken();
             c.setAutoCommit(false);
