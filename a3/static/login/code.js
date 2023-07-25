@@ -23,16 +23,16 @@ function passwordForm () {
 }
 
 function tokenForm() {
-        genTokenReq();
-        $("#token").css("display", "inline");
-        $("#sendToken").css("display", "inline")
-        $("#email").css("display", "none");
-        $("#password").css("display", "none");
-        $("#continue").css("display", "none");
-        $("#forgot").css("display", "none");
-        $("#login").css("display", "none");
-        $("#create").css("display", "none");
-        $("#back").css("display", "inline");
+    genTokenReq();
+    $("#token").css("display", "inline");
+    $("#sendToken").css("display", "inline")
+    $("#email").css("display", "none");
+    $("#password").css("display", "none");
+    $("#continue").css("display", "none");
+    $("#forgot").css("display", "none");
+    $("#login").css("display", "none");
+    $("#create").css("display", "none");
+    $("#back").css("display", "inline");
 }
 
 $(document).ready(function() {
@@ -52,8 +52,11 @@ $(document).ready(function() {
     } );
 
     console.log("Setting create behavior on create button.");
-    $("#create").click( function(){
-        createReq();
+    $("#create").click( async function () {
+        let createSuccess = await createReq();
+        if (createSuccess) {
+            tokenForm();
+        }
     } );
 
     console.log("Setting back behavior on back button.");

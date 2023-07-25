@@ -4,22 +4,45 @@ var email = document.cookie.split("=")[1];
 var balance;
 var text;
 
+// function createReq() {
+//     console.log("Sending 'create user' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
+//     $.ajax({
+//         method: "GET",
+//         url: baseUrl + "/api/create",
+//         data: { email: $('#email').val() , password: $('#password').val()}
+//     }).done( function (response) {
+//         console.log("Success: 'create user'.");
+//         text = response.text;
+//         console.log(text);
+//         $("#response").html("<p>" + text + "</p>");
+//     }).fail( function (jqXHR, textStatus, errorThrown) {
+//         console.log("Error: 'create user'.");
+//         text = jqXHR.responseJSON.text;
+//         console.log(text);
+//         $("#response").html("<p>" + text + "</p>");
+//     });
+// }
+
 function createReq() {
-    console.log("Sending 'create user' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
-    $.ajax({
-        method: "GET",
-        url: baseUrl + "/api/create",
-        data: { email: $('#email').val() , password: $('#password').val()}
-    }).done( function (response) {        
-        console.log("Success: 'create user'.");
-        text = response.text;
-        console.log(text);
-        $("#response").html("<p>" + text + "</p>");
-    }).fail( function (jqXHR, textStatus, errorThrown) {
-        console.log("Error: 'create user'.");
-        text = jqXHR.responseJSON.text;
-        console.log(text);
-        $("#response").html("<p>" + text + "</p>");
+    return new Promise((resolve, reject) => {
+        console.log("Sending 'create user' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
+        $.ajax({
+            method: "GET",
+            url: baseUrl + "/api/create",
+            data: { email: $('#email').val() , password: $('#password').val()}
+        }).done( function (response) {
+            console.log("Success: 'create user'.");
+            text = response.text;
+            console.log(text);
+            $("#response").html("<p>" + text + "</p>");
+            resolve(true);
+        }).fail( function (jqXHR, textStatus, errorThrown) {
+            console.log("Error: 'create user'.");
+            text = jqXHR.responseJSON.text;
+            console.log(text);
+            $("#response").html("<p>" + text + "</p>");
+            resolve(false);
+        });
     });
 }
 
