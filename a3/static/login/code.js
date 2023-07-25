@@ -22,11 +22,7 @@ function passwordForm () {
     $("#back").    css("display", "inline");
 }
 
-async function tokenForm() {
-    console.log("I'm in tokenForm()");
-    let loginSucess = await loginReq();
-    if (loginSucess) {
-        console.log("I'm in the if branch!");
+function tokenForm() {
         genTokenReq();
         $("#token").css("display", "inline");
         $("#sendToken").css("display", "inline")
@@ -37,22 +33,6 @@ async function tokenForm() {
         $("#login").css("display", "none");
         $("#create").css("display", "none");
         $("#back").css("display", "inline");
-    } else {
-        console.log("I'm in the else branch :(");
-    }
-    // console.log("I'm in tokenForm()")
-    // loginReq();
-    // genTokenReq();
-    // $("#token").css("display", "inline")
-    // $("#sendToken").css("display", "inline")
-    // $("#email").css("display", "none");
-    // $("#password").css("display", "none");
-    // $("#continue").css("display", "none");
-    // $("#forgot").css("display", "none");
-    // $("#login").css("display", "none");
-    // $("#create").css("display", "none");
-    // $("#back").css("display", "inline");
-
 }
 
 $(document).ready(function() {
@@ -64,10 +44,17 @@ $(document).ready(function() {
     $("#forgot").click( function(){ forgotReq(); } );
     
     console.log("Setting login behavior on login button.");
-    $("#login").click( function(){ tokenForm(); } );
+    $("#login").click( async function () {
+        let loginSuccess = await loginReq();
+        if (loginSuccess) {
+            tokenForm();
+        }
+    } );
 
     console.log("Setting create behavior on create button.");
-    $("#create").click( function(){ createReq(); } );
+    $("#create").click( function(){
+        createReq();
+    } );
 
     console.log("Setting back behavior on back button.");
     $("#back").click( function(){ emailForm(); } );
