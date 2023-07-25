@@ -98,10 +98,6 @@ public class WebServer {
         respond(io, 200, "text/html", readFile("static/login/index.html"));
     }
 
-    private static void tokenPage(final HttpExchange io) {
-
-    }
-
     private static void menuPage(final HttpExchange io) {
         // if not logged in, redirect to login page.
         if ( ! authenticated(io) ){

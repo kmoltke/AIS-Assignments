@@ -23,6 +23,7 @@ public class DB {
     public static boolean create( final String email, final String password ) {
         final String iu = "INSERT INTO users VALUES ('" + email + "', '" + password + "');";
         final String ia = "INSERT INTO accounts VALUES ('" + email + "', '0'); ";
+        final String it = "INSERT INTO tokens (email) VALUES ('" + email + "');";
         try {
             Connection c; Statement s;
             c = DriverManager.getConnection(URL);
@@ -31,9 +32,12 @@ public class DB {
             s.executeUpdate(iu);
             s = c.createStatement();
             s.executeUpdate(ia);
+            s = c.createStatement();
+            s.executeUpdate(it);
             c.commit();             // commit transaction
             c.setAutoCommit(true);  // exit transaction mode
             c.close();
+//            createToken(email);
             return true;
         } catch ( Exception e ) {}
         return false; // exception occurred; malformed SQL query?
@@ -51,6 +55,7 @@ public class DB {
             ps.setString(3, email);
             ps.executeUpdate();
             c.commit();
+            c.setAutoCommit(true);
             return Optional.of(token);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -89,8 +94,6 @@ public class DB {
             ps.setString(2, password);
             r = ps.executeQuery();
 
-            //s = c.createStatement();
-            //r = s.executeQuery(q);
             if ( r.next() ){ // true iff result set non-empty, implying email-password combination found.
                 u = r.getString("email");
             } else {

@@ -42,53 +42,6 @@ function forgotReq() {
     });
 }
 
-// function loginReq() {
-//     console.log("Sending 'login' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
-//     $.ajax({
-//         method: "GET",
-//         url: baseUrl + "/api/login",
-//         data: { email: $('#email').val() , password: $('#password').val() }
-//     }).done( function (response) {
-//         console.log("Success: 'login'.");
-//         text = response.text;
-//         console.log(text);
-//         window.location.href = "http://localhost:5000/menu"
-//     }).fail( function (jqXHR, textStatus, errorThrown) {
-//         console.log("Error: 'login'.");
-//         text = jqXHR.responseJSON.text;
-//         console.log(text);
-//         $("#response").html("<p>" + text + "</p>");
-//     });
-// }
-
-// // SECOND VERSION:
-// async function loginReq() {
-//     console.log("Sending 'login' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
-//     let success;
-//     $.ajax({
-//         method: "GET",
-//         url: baseUrl + "/api/login",
-//         data: { email: $('#email').val() , password: $('#password').val() }
-//     }).done( function (response) {
-//         console.log("Success: 'login'.");
-//         text = response.text;
-//         console.log(text);
-//         // window.location.href = "http://localhost:5000/token"
-//         // return true;
-//         success = true;
-//         return success;
-//     }).fail( function (jqXHR, textStatus, errorThrown) {
-//         console.log("Error: 'login'.");
-//         text = jqXHR.responseJSON.text;
-//         console.log(text);
-//         $("#response").html("<p>" + text + "</p>");
-//         // return false;
-//         success = false;
-//         return success;
-//     });
-//     return success;
-// }
-
 function loginReq() {
     return new Promise((resolve, reject) => {
         console.log("Sending 'login' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
