@@ -1,6 +1,4 @@
-
 import { baseUrl, createReq, forgotReq, loginReq, tokenReq, genTokenReq } from "../api.js";
-// import {genTokenReq} from "../api";
 
 function emailForm () {
     $("#email").   css("display", "inline");

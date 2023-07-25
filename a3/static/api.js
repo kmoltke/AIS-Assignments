@@ -1,27 +1,7 @@
-
 var baseUrl  = "http://localhost:5000";
 var email = document.cookie.split("=")[1];
 var balance;
 var text;
-
-// function createReq() {
-//     console.log("Sending 'create user' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
-//     $.ajax({
-//         method: "GET",
-//         url: baseUrl + "/api/create",
-//         data: { email: $('#email').val() , password: $('#password').val()}
-//     }).done( function (response) {
-//         console.log("Success: 'create user'.");
-//         text = response.text;
-//         console.log(text);
-//         $("#response").html("<p>" + text + "</p>");
-//     }).fail( function (jqXHR, textStatus, errorThrown) {
-//         console.log("Error: 'create user'.");
-//         text = jqXHR.responseJSON.text;
-//         console.log(text);
-//         $("#response").html("<p>" + text + "</p>");
-//     });
-// }
 
 function createReq() {
     return new Promise((resolve, reject) => {
@@ -90,6 +70,7 @@ function loginReq() {
 
 function genTokenReq() {
     console.log("Sending generate token request to server. email=" + $('#email').val());
+    $("#response").html("<p>Sending token to " + $('#email').val() + "...</p>");
     $.ajax({
         method: "GET",
         url: baseUrl + "/api/genToken",
