@@ -154,16 +154,9 @@ public class WebServer {
         final Optional<String> result = DB.createToken(qMap.get("email"));
         if (!result.isPresent()) {
             respond(io, 400, "application/json", json("Syntax error in token creation query."));
+            log(io, qMap.get("email") + " failed generating token.");
             return;
         }
-
-//        Optional<ArrayList<String>> result = DB.getToken(qMap.get("email"));
-
-//        final boolean userExists = result.isPresent();
-//        if ( ! userExists ){
-//            respond(io, 401, "application/json", json("Email is invalid."));
-//            return;
-//        }
 
         final String subject = "PayBud token";
         final Function<String,String> body = (token) -> "Hi!\n\nYour PayBud Token is \"" + token + "\" (w/o quotes).\n\nCheers!\nPayBud";
@@ -175,6 +168,7 @@ public class WebServer {
             return;
         }
         respond(io, 200, "application/json", json("Token successfully e-mailed to " + qMap.get("email")));
+        log(io, "token sent to " + qMap.get("email"));
     }
 
     private static void authToken(final HttpExchange io) {
@@ -190,12 +184,11 @@ public class WebServer {
         Optional<ArrayList<String>> result = DB.getToken(email, token);
         if (!result.isPresent()) {
             respond(io, 401, "application/json", json("Token is invalid."));
-            log.info(dateformat.format(new Date()) + " " + email + " provided invalid token.");
+            log(io, email + " provided invalid token.");
         } else {
-//            authenticate(io, result.get().get(0));
             authenticate(io, email);
             respond(io, 200, "application/json", json("Login authenticated."));
-            log.info(dateformat.format(new Date()) + " " + email + " was successfully authenticated.");
+            log(io, email + " was successfully authenticated.");
         }
     }
 
@@ -277,25 +270,18 @@ public class WebServer {
         final boolean loginSuccess = (result != null);
         if ( ! loginSuccess ){
             respond(io, 400, "application/json", json("Syntax error in the request."));
-	        log.info(dateformat.format(new Date()) + " " + email + " and " + password + " has a syntax error.");
+            log(io, email + " and " + password + " has a syntax error.");
             return;
         }
 
         final boolean userExists = result.isPresent();
         if ( ! userExists ){
             respond(io, 401, "application/json", json("Email and password are invalid."));
-	        log.info(dateformat.format(new Date()) + " " + email + " user does not exist.");
+            log(io, email + " provided invalid password.");
         } else {
-//            authenticate(io, result.get());
             respond(io, 200, "application/json", json("Login successful."));
-            log.info(dateformat.format(new Date()) + " " + email + " logged in.");
+            log(io, email + " logged in.");
         }
-
-//        else {
-//            authenticate(io, result.get());
-//            respond(io, 200, "application/json", json("Login successful."));
-//	        log.info(dateformat.format(new Date()) + " " + email + " logged in.");
-//        }
     }
 
     private static void balance(final HttpExchange io){
@@ -575,5 +561,11 @@ public class WebServer {
             return URLDecoder.decode(url, CHARSET.name());
         } catch ( Exception e ) {}
         return "";
+    }
+
+
+    // HELPERS
+    private static void log(HttpExchange io, String msg) {
+        log.info(io.getRemoteAddress().toString() + " - [" + dateformat.format(new Date()) + "]: " + msg);
     }
 }
