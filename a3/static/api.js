@@ -145,7 +145,13 @@ function tokenReq() {
         console.log("Error: 'authentication'.");
         text = jqXHR.responseJSON.text;
         console.log(text);
-        $("#response").html("<p>" + text + "</p>");
+
+        if (jqXHR.status === 419) {
+            genTokenReq();
+            $("#response").html("<p>The token has expired. A new token has been sent to your email.</p>");
+        } else {
+            $("#response").html("<p>" + text + "</p>");
+        }
     });
 }
 

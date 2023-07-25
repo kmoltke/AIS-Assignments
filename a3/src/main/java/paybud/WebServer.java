@@ -7,14 +7,15 @@ package paybud;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
-import java.io.File;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Function;
 import org.json.simple.JSONObject;
@@ -185,11 +186,28 @@ public class WebServer {
         if (!result.isPresent()) {
             respond(io, 401, "application/json", json("Token is invalid."));
             log(io, email + " provided invalid token.");
+        } else if (tokenExpired(result.get().get(1))) {
+            respond(io, 419, "application/json", json("Token is timed out."));
+            log(io, email + " token is timed out.");
         } else {
             authenticate(io, email);
             respond(io, 200, "application/json", json("Login authenticated."));
             log(io, email + " was successfully authenticated.");
         }
+    }
+
+    private static boolean tokenExpired(final String tokenTime) {
+        // Parse the token creation time string into a LocalDateTime object
+        LocalDateTime parsedTokenTime = LocalDateTime.parse(tokenTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
+
+        // Get the current time as a LocalDateTime object
+        LocalDateTime currentTime = LocalDateTime.now();
+
+        // Calculate the difference between the current time and the token creation time
+        long minutesDifference = parsedTokenTime.until(currentTime, ChronoUnit.MINUTES);
+
+        // Change expiration time here:
+        return minutesDifference > 1;
     }
 
 
@@ -219,7 +237,7 @@ public class WebServer {
             respond(io, 400, "application/json", json("Syntax error in user creation query."));
             return;
         }
-	
+
         respond(io, 200, "application/json", json("User created successfully."));
     }
 
