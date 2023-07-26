@@ -1,7 +1,8 @@
 # Assignment 3
 _- Kristian Moltke Reitzel, krei@itu.dk_
 
-The report and the source code can be accessed on: https://github.com/kmoltke/AIS-Assignments
+The report and the source code can be accessed on:
+https://github.com/kmoltke/AIS-Assignments/tree/main/a3
 
 ## Problem 1
 
