@@ -74,7 +74,7 @@ Location: DB.java:[line 43]
 A current user can set his/her account balance to e.g. 1000 with this SQL injection. This will also log the user in without having to type a valid password.
 ```test1@mailinator.com'; UPDATE accounts SET balance = 1000 WHERE email = "test1@mailinator.com";--```
 ### Part 3
-![img.png](img.png)
+![img.png](screenshots/img.png)
 _Note: I changed the log print afterwards to also include the IP of the request_
 
 ### Part 4
@@ -110,7 +110,7 @@ public static Optional<String> login( final String email, final String password 
 
 The same sql-injection will no longer work:
 
-![img_2.png](img_2.png)
+![img_2.png](screenshots/img_2.png)
 _Note: I changed the log print afterwards to also include the IP of the request_
 
 
@@ -118,7 +118,7 @@ _Note: I changed the log print afterwards to also include the IP of the request_
 ### Part 1
 Command for `patator`:
 
-![img_5.png](img_5.png)
+![img_5.png](screenshots/img_5.png)
 
 Correctly guessing the **super** secret password: `asdf1234`
 
@@ -128,7 +128,7 @@ Brute force
 ### Part 3
 It is clear in the log, that something fishy is happening because it appears that the same user tries to log in several of times a second, which is not possible for a human being to do manually.
 
-![img_6.png](img_6.png)
+![img_6.png](screenshots/img_6.png)
 
 ## Problem 5
 1. U -> C: {email, password}
