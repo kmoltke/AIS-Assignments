@@ -1,6 +1,8 @@
 # Assignment 3
 _- Kristian Moltke Reitzel, krei@itu.dk_
 
+The report and the source code can be accessed on: https://github.com/kmoltke/AIS-Assignments
+
 ## Problem 1
 
 ### Part 1
@@ -172,12 +174,18 @@ CREATE TABLE tokens (
 The communication is not encrypted.
 
 ### Part 2
-1. U -> C - _login information_
-2. C -> A - _The attacker intercepts login_
-3. A -> S - _The attacker acts as the client and sends login request to server_
-4. S -> A - _The server sends token to attacker_
-5. A -> C - _Attacker _
+1. U -> C: {login} - 
+2. C -> A: {login} - _The attacker intercepts login_
+3. A -> S: {login} - _The attacker acts as the client and sends login request to server_
+4. S -> A: {email: token} - _The server sends token to attacker_
+5. A -> U: {email: token} - _Attacker sends a fake message to the user containing the token_
+6. U -> C: {token} - _User, thinking it's the legitimate token, sends it back to client_
+7. U -> A: {token} - _Attacker intercepts the token from user intended for client_
+8. A -> S: {token} - _Attacker sends token to server_
+9. S -> A: {menuPage} - _Man-in-the-middle attack successful_
 
 A tool that is installed on Kali for man-in-the-middle attack can e.g. be `Ettercap`.
 
 ### Part 3
+Logging might reveal the man in the middle attack, if it detects an abnormal pattern in the communication. I.e. if the log contains the IP of the requests.
+If the client is compromised then it is more difficult to track since the IP of the client might be the same as the server expect.
