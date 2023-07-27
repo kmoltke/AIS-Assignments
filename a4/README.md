@@ -77,3 +77,18 @@ The server still supports TLS version 1.0 and 1.1.
 
 TLS 1.0 and 1.1 use older cryptographic algorithms, some of which have been found to be weak over time due to advances in computational power and cryptanalysis. This could expose users to attackers who can exploit these weak encryption algorithms to intercept or manipulate data. These attacks could potentially compromise the confidentiality and integrity of data being transmitted between the user's browser and the server.
 
+## Problem 2
+//TODO
+### Part 1
+
+### Part 2
+//TODO: DEscribe
+LOGJAM
+
+BEAST
+
+### Part 3
+
+
+### Part 4
+![img.png](screenshots/img1.png)
