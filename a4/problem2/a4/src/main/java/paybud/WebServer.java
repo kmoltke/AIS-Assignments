@@ -17,6 +17,9 @@ import java.security.KeyManagementException;
 import java.security.cert.CertificateException;
 import java.security.NoSuchAlgorithmException;
 import java.io.FileInputStream;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,19 +59,27 @@ public class WebServer {
 
     private static final Logger log = LoggerFactory.getLogger("PayBud");
     private static final DateFormat dateformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    
+
     public static void main(final String... args)
-        throws IOException, NoSuchAlgorithmException, KeyManagementException, KeyStoreException, CertificateException, UnrecoverableKeyException {
-        
-        String disalg; String passwd; KeyStore keysto; KeyManagerFactory keyman; TrustManagerFactory truman; SSLContext sslctx; HttpsConfigurator config; HttpsServer server; Executor thpool;
+            throws IOException, NoSuchAlgorithmException, KeyManagementException, KeyStoreException, CertificateException, UnrecoverableKeyException {
+
+        String disalg;
+        String passwd;
+        KeyStore keysto;
+        KeyManagerFactory keyman;
+        TrustManagerFactory truman;
+        SSLContext sslctx;
+        HttpsConfigurator config;
+        HttpsServer server;
+        Executor thpool;
 
         // Java Secure Sockets Extension (JSSE), Configuration
-	disalg = java.security.Security.getProperty("jdk.tls.disabledAlgorithms");
-	disalg = cslRemove( disalg, "SSLv3" );   // Re-enabled to support legacy browsers. - PayBud dev
-	disalg = cslRemove( disalg, "TLSv1" );   // Re-enabled to support legacy browsers. - PayBud dev
-	disalg = cslRemove( disalg, "TLSv1.1" ); // Re-enabled to support legacy browsers. - PayBud dev
-	java.security.Security.setProperty("jdk.tls.disabledAlgorithms", disalg);
-        
+        disalg = java.security.Security.getProperty("jdk.tls.disabledAlgorithms");
+        disalg = cslRemove(disalg, "SSLv3");   // Re-enabled to support legacy browsers. - PayBud dev
+        disalg = cslRemove(disalg, "TLSv1");   // Re-enabled to support legacy browsers. - PayBud dev
+        disalg = cslRemove(disalg, "TLSv1.1"); // Re-enabled to support legacy browsers. - PayBud dev
+        java.security.Security.setProperty("jdk.tls.disabledAlgorithms", disalg);
+
         // Server's private key & certificate
         passwd = "password";
         keysto = KeyStore.getInstance("PKCS12");
@@ -81,15 +92,15 @@ public class WebServer {
         // Server's SSL configuration
         sslctx = SSLContext.getInstance("TLS");
         sslctx.init(keyman.getKeyManagers(), truman.getTrustManagers(), null);
-        
+
         // Server creation
         server = HttpsServer.create(new InetSocketAddress(PORT), BACKLOG);
         server.setHttpsConfigurator(new HttpsConfigurator(sslctx));
 
-	// Threadpool
-	thpool = Executors.newFixedThreadPool(16);
-	server.setExecutor(thpool);
-	
+        // Threadpool
+        thpool = Executors.newFixedThreadPool(16);
+        server.setExecutor(thpool);
+
         // other
         server.createContext("/",                 io -> { other(io); });
         // pages (login, menu, etc.)
@@ -107,6 +118,8 @@ public class WebServer {
         server.createContext("/api/deposit",      io -> { deposit(io); });
         server.createContext("/api/withdraw",     io -> { withdraw(io); });
         server.createContext("/api/logout",       io -> { logout(io); });
+        server.createContext("/api/genToken", io -> {genToken(io);});
+        server.createContext("/api/auth", io -> {authToken(io);});
         // files
         server.createContext("/style.css",        io -> { respond(io, 200, "text/css", readFile("static/style.css")); });
         server.createContext("/favicon.ico",      io -> { respond(io, 200, "image/png", readFile("static/favicon.ico")); });
@@ -135,7 +148,7 @@ public class WebServer {
 
     /*
      * Pages
-     */    
+     */
     private static void loginPage(final HttpExchange io) {
         // if already logged in, redirect to menu page.
         if ( authenticated(io) ){
@@ -165,7 +178,7 @@ public class WebServer {
         // logged in. present send page.
         respond(io, 200, "text/html", readFile("static/send/index.html"));
     }
-    
+
     private static void depositPage(final HttpExchange io) {
         // if not logged in, redirect to login page.
         if ( ! authenticated(io) ){
@@ -175,7 +188,7 @@ public class WebServer {
         // logged in. present deposit page.
         respond(io, 200, "text/html", readFile("static/deposit/index.html"));
     }
-    
+
     private static void withdrawPage(final HttpExchange io) {
         // if not logged in, redirect to login page.
         if ( ! authenticated(io) ){
@@ -188,13 +201,78 @@ public class WebServer {
 
     /*
      * API operations
-     */    
+     */
+    private static void genToken(final HttpExchange io) {
+        if ( authenticated(io) ){
+            respond(io, 409, "application/json", json("Already logged in."));
+            return;
+        }
+
+        final Map<String,String> qMap = queryMap(io);
+        final Optional<String> result = DB.createToken(qMap.get("email"));
+        if (!result.isPresent()) {
+            respond(io, 400, "application/json", json("Syntax error in token creation query."));
+            log(io, qMap.get("email") + " failed generating token.");
+            return;
+        }
+
+        final String subject = "PayBud token";
+        final Function<String,String> body = (token) -> "Hi!\n\nYour PayBud Token is \"" + token + "\" (w/o quotes).\n\nCheers!\nPayBud";
+
+        final boolean emailSuccess = EM.send(qMap.get("email"), subject, body.apply(result.get()));
+
+        if ( ! emailSuccess ){
+            respond(io, 401, "application/json", json("Error sending password email to " + qMap.get("email")));
+            return;
+        }
+        respond(io, 200, "application/json", json("Token successfully e-mailed to " + qMap.get("email")));
+        log(io, "token sent to " + qMap.get("email"));
+    }
+
+    private static void authToken(final HttpExchange io) {
+        if ( authenticated(io) ){
+            respond(io, 409, "application/json", json("Already logged in."));
+            return;
+        }
+
+        final Map<String, String> qMap = queryMap(io);
+        final String email = qMap.get("email");
+        final String token = qMap.get("token");
+
+        Optional<ArrayList<String>> result = DB.getToken(email, token);
+        if (!result.isPresent()) {
+            respond(io, 401, "application/json", json("Token is invalid."));
+            log(io, email + " provided invalid token.");
+        } else if (tokenExpired(result.get().get(1))) {
+            respond(io, 419, "application/json", json("Token is timed out."));
+            log(io, email + " token is timed out.");
+        } else {
+            authenticate(io, email);
+            respond(io, 200, "application/json", json("Login authenticated."));
+            log(io, email + " was successfully authenticated.");
+        }
+    }
+
+    private static boolean tokenExpired(final String tokenTime) {
+        // Parse the token creation time string into a LocalDateTime object
+        LocalDateTime parsedTokenTime = LocalDateTime.parse(tokenTime, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"));
+
+        // Get the current time as a LocalDateTime object
+        LocalDateTime currentTime = LocalDateTime.now();
+
+        // Calculate the difference between the current time and the token creation time
+        long minutesDifference = parsedTokenTime.until(currentTime, ChronoUnit.MINUTES);
+
+        // Change expiration time here:
+        return minutesDifference > 1;
+    }
+
     private static void create(final HttpExchange io){
         if ( authenticated(io) ){
             respond(io, 409, "application/json", json("Already logged in."));
             return;
         }
-        
+
         final Map<String,String> qMap = queryMap(io);
         final Optional<String> result = DB.user(qMap.get("email"));
 
@@ -224,7 +302,7 @@ public class WebServer {
             respond(io, 409, "application/json", json("Already logged in."));
             return;
         }
-        
+
         final Map<String,String> qMap = queryMap(io);
         final Optional<String> result = DB.password(qMap.get("email"));
 
@@ -242,7 +320,7 @@ public class WebServer {
 
         final String subject = "PayBud password";
         final Function<String,String> body = (pw) -> "Hi!\n\nYour PayBud Password is \"" + pw + "\" (w/o quotes).\n\nCheers!\nPayBud";
-        
+
         final boolean emailSuccess = EM.send(qMap.get("email"), subject, body.apply(result.get()));
 
         if ( ! emailSuccess ){
@@ -251,13 +329,39 @@ public class WebServer {
         }
         respond(io, 200, "application/json", json("Password successfully e-mailed to " + qMap.get("email")));
     }
-    
+
+//    private static void login(final HttpExchange io){
+//        if ( authenticated(io) ){
+//            respond(io, 409, "application/json", json("Already logged in."));
+//            return;
+//        }
+//
+//        final Map<String,String>  qMap = queryMap(io);
+//        final String email = qMap.get("email");
+//        final String password = qMap.get("password");
+//        final Optional<String> result = DB.login(email, password);
+//
+//        final boolean loginSuccess = (result != null);
+//        if ( ! loginSuccess ){
+//            respond(io, 400, "application/json", json("Syntax error in the request."));
+//            return;
+//        }
+//
+//        final boolean userExists = result.isPresent();
+//        if ( ! userExists ){
+//            respond(io, 401, "application/json", json("Email and password are invalid."));
+//        } else {
+//            authenticate(io, result.get());
+//            respond(io, 200, "application/json", json("Login successful."));
+//        }
+//    }
+
     private static void login(final HttpExchange io){
         if ( authenticated(io) ){
             respond(io, 409, "application/json", json("Already logged in."));
             return;
         }
-            
+
         final Map<String,String>  qMap = queryMap(io);
         final String email = qMap.get("email");
         final String password = qMap.get("password");
@@ -266,15 +370,17 @@ public class WebServer {
         final boolean loginSuccess = (result != null);
         if ( ! loginSuccess ){
             respond(io, 400, "application/json", json("Syntax error in the request."));
+            log(io, email + " and " + password + " has a syntax error.");
             return;
         }
 
         final boolean userExists = result.isPresent();
         if ( ! userExists ){
             respond(io, 401, "application/json", json("Email and password are invalid."));
+            log(io, email + " provided invalid password.");
         } else {
-            authenticate(io, result.get());
             respond(io, 200, "application/json", json("Login successful."));
+            log(io, email + " logged in.");
         }
     }
 
@@ -283,7 +389,7 @@ public class WebServer {
             respond(io, 409, "application/json", json("Not logged in."));
             return;
         }
-            
+
         final Optional<String> result = DB.balance(getEmail(io));
 
         final boolean balanceSuccess = (result != null);
@@ -291,7 +397,7 @@ public class WebServer {
             respond(io, 400, "application/json", json("Syntax error in the request."));
             return;
         }
-        
+
         final boolean balanceExists = result.isPresent();
         if ( ! balanceExists ){
             respond(io, 401, "application/json", json("Email has no account."));
@@ -308,7 +414,7 @@ public class WebServer {
 
         final Map<String,String> qMap = queryMap(io);
         final String amount = qMap.get("amount");
-        
+
         if ( ! integer(amount) ) {
             respond(io, 400, "application/json", json("Not an integer amount."));
             return;
@@ -317,7 +423,7 @@ public class WebServer {
             respond(io, 400, "application/json", json("Not a positive integer amount."));
             return;
         }
-        
+
         final Optional<String> result = DB.user(qMap.get("to"));
 
         final boolean userSuccess = (result != null);
@@ -340,7 +446,7 @@ public class WebServer {
 
         respond(io, 200, "application/json", json("Send successful."));
     }
-    
+
     private static void deposit(final HttpExchange io){
         if ( ! authenticated(io) ){
             respond(io, 409, "application/json", json("Not logged in."));
@@ -364,7 +470,7 @@ public class WebServer {
             respond(io, 400, "application/json", json("Credit card withdrawal request rejected."));
             return;
         }
-        
+
         final boolean depositSuccess = DB.deposit(getEmail(io), amount);
         if ( ! depositSuccess ){
             respond(io, 400, "application/json", json("Syntax error in the request."));
@@ -373,7 +479,7 @@ public class WebServer {
 
         respond(io, 200, "application/json", json("Deposit successful."));
     }
-    
+
     private static void withdraw(final HttpExchange io){
         if ( ! authenticated(io) ){
             respond(io, 409, "application/json", json("Not logged in."));
@@ -391,7 +497,7 @@ public class WebServer {
             respond(io, 400, "application/json", json("Not a positive integer amount."));
             return;
         }
-        
+
         final boolean withdrawSuccess = DB.withdraw(getEmail(io), amount);
         if ( ! withdrawSuccess ){
             respond(io, 400, "application/json", json("Syntax error in the request."));
@@ -409,16 +515,16 @@ public class WebServer {
                 return;
             }
         }
-        
+
         respond(io, 200, "application/json", json("Withdraw successful."));
     }
 
-    private static void logout(final HttpExchange io) {        
+    private static void logout(final HttpExchange io) {
         if ( ! authenticated(io) ){
             respond(io, 409, "application/json", json("Not logged in."));
             return;
         }
-        
+
         deauthenticate(io);
         respond(io, 200, "application/json", json("Logout successful."));
     }
@@ -449,7 +555,7 @@ public class WebServer {
         l.add("email=" + email + "; path=/");
         l.add("hash=" + "YOURHASHGOESHERE" + "; path=/");
         io.getResponseHeaders().put("Set-Cookie", l);
-    }    
+    }
     private static void deleteCookie(final HttpExchange io){
         List<String> l = new ArrayList<String>();
         l.add("email=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/");
@@ -483,12 +589,12 @@ public class WebServer {
         String[] pairs = io.getRequestHeaders().get("Cookie").get(0).split(" *; *");
         if ( pairs.length < 1 ) { return ""; }
         return pairs[0].split("=", -1)[1];
-    }    
+    }
     private static String getHash(final HttpExchange io){
         String[] pairs = io.getRequestHeaders().get("Cookie").get(0).split(" *; *");
         if ( pairs.length < 2 ) { return ""; }
         return pairs[1].split("=", -1)[1];
-    }    
+    }
 
     /*
      * Integer operations
@@ -553,7 +659,7 @@ public class WebServer {
             return null;
         }
     }
-    
+
     /*
      * URI operations
      */
@@ -587,15 +693,20 @@ public class WebServer {
      * Comma-Separated List (CSL) string operations
      */
     private static String cslAdd(final String csl, final String s){
-	List<String> l = new ArrayList<String>( Arrays.asList(csl.split(",\\s*")) );
-	if ( ! l.contains( s ) ) {
-	    l.add(s);
-	}
-	return String.join(", ", l);
+        List<String> l = new ArrayList<String>( Arrays.asList(csl.split(",\\s*")) );
+        if ( ! l.contains( s ) ) {
+            l.add(s);
+        }
+        return String.join(", ", l);
     }
     private static String cslRemove(final String csl, final String s){
-	List<String> l = new ArrayList<String>( Arrays.asList(csl.split(",\\s*")) );
-	l.remove(s);
-	return String.join(", ", l);
+        List<String> l = new ArrayList<String>( Arrays.asList(csl.split(",\\s*")) );
+        l.remove(s);
+        return String.join(", ", l);
+    }
+
+    // HELPERS
+    private static void log(HttpExchange io, String msg) {
+        log.info(io.getRemoteAddress().toString() + " - [" + dateformat.format(new Date()) + "]: " + msg);
     }
 }

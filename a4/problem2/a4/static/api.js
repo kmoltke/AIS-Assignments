@@ -1,25 +1,28 @@
-
 var baseUrl  = "https://localhost:5000";
 var email = document.cookie.split(";")[0].split("=")[1];
 var balance;
 var text;
 
 function createReq() {
-    console.log("Sending 'create user' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
-    $.ajax({
-        method: "GET",
-        url: baseUrl + "/api/create",
-        data: { email: $('#email').val() , password: $('#password').val()}
-    }).done( function (response) {        
-        console.log("Success: 'create user'.");
-        text = response.text;
-        console.log(text);
-        $("#response").html("<p>" + text + "</p>");
-    }).fail( function (jqXHR, textStatus, errorThrown) {
-        console.log("Error: 'create user'.");
-        text = jqXHR.responseJSON.text;
-        console.log(text);
-        $("#response").html("<p>" + text + "</p>");
+    return new Promise((resolve, reject) => {
+        console.log("Sending 'create user' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
+        $.ajax({
+            method: "GET",
+            url: baseUrl + "/api/create",
+            data: { email: $('#email').val() , password: $('#password').val()}
+        }).done( function (response) {
+            console.log("Success: 'create user'.");
+            text = response.text;
+            console.log(text);
+            $("#response").html("<p>" + text + "</p>");
+            resolve(true);
+        }).fail( function (jqXHR, textStatus, errorThrown) {
+            console.log("Error: 'create user'.");
+            text = jqXHR.responseJSON.text;
+            console.log(text);
+            $("#response").html("<p>" + text + "</p>");
+            resolve(false);
+        });
     });
 }
 
@@ -43,21 +46,68 @@ function forgotReq() {
 }
 
 function loginReq() {
-    console.log("Sending 'login' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
+    return new Promise((resolve, reject) => {
+        console.log("Sending 'login' request to server. email=" + $('#email').val() + ", password=" + $('#password').val());
+        $.ajax({
+            method: "GET",
+            url: baseUrl + "/api/login",
+            data: { email: $('#email').val() , password: $('#password').val() }
+        }).done(function(response) {
+            console.log("Success: 'login'.");
+            text = response.text;
+            console.log(text);
+            resolve(true);
+        }).fail(function(jqXHR, textStatus, errorThrown) {
+            console.log("Error: 'login'.");
+            text = jqXHR.responseJSON.text;
+            console.log(text);
+            $("#response").html("<p>" + text + "</p>");
+            resolve(false);
+        });
+    });
+}
+
+function genTokenReq() {
+    console.log("Sending generate token request to server. email=" + $('#email').val());
+    $("#response").html("<p>Sending token to " + $('#email').val() + "...</p>");
     $.ajax({
         method: "GET",
-        url: baseUrl + "/api/login",
-        data: { email: $('#email').val() , password: $('#password').val() }
-    }).done( function (response) {        
-        console.log("Success: 'login'.");
+        url: baseUrl + "/api/genToken",
+        data: {email: $('#email').val()}
+    }).done(function (response) {
+        console.log("Success: 'Generate token'.");
         text = response.text;
         console.log(text);
-        window.location.href = baseUrl + "/menu"
+        $("#response").html("<p>" + text + "</p>");
+    }).fail(function (jqXHR, textStatus, errorThrown) {
+        console.log("Error: 'Generate token'.");
+        text = jqXHR.responseJSON.text;
+        $("#response").html("<p>" + text + "</p>");
+    })
+}
+
+function tokenReq() {
+    console.log("Sending 'token' request to server. email="+ $('#token').val());
+    $.ajax({
+        method: "GET",
+        url: baseUrl + "/api/auth",
+        data: {email: $('#email').val(), token: $('#token').val() }
+    }).done( function (response) {
+        console.log("Success: 'authentication'.");
+        text = response.text;
+        console.log(text);
+        window.location.href = "https://localhost:5000/menu";
     }).fail( function (jqXHR, textStatus, errorThrown) {
-        console.log("Error: 'login'.");
+        console.log("Error: 'authentication'.");
         text = jqXHR.responseJSON.text;
         console.log(text);
-        $("#response").html("<p>" + text + "</p>");
+
+        if (jqXHR.status === 419) {
+            genTokenReq();
+            $("#response").html("<p>The token has expired. A new token has been sent to your email.</p>");
+        } else {
+            $("#response").html("<p>" + text + "</p>");
+        }
     });
 }
 
@@ -159,4 +209,4 @@ function withdrawReq() {
     balanceReq();
 }
 
-export { baseUrl, email, balance, forgotReq, createReq, loginReq, logoutReq, balanceReq, sendReq, depositReq, withdrawReq };
+export { baseUrl, email, balance, forgotReq, createReq, loginReq, logoutReq, balanceReq, sendReq, depositReq, withdrawReq, tokenReq, genTokenReq };

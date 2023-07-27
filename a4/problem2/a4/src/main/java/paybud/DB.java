@@ -4,12 +4,12 @@ package paybud;
  * Interface to the PayBud database.
  */
 
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Connection;
-import java.sql.Statement;
-import java.sql.SQLException;
+import java.sql.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Optional;
+import java.util.Random;
 
 public class DB {
 
@@ -18,6 +18,7 @@ public class DB {
     public static boolean create( final String email, final String password ) {
         final String iu = "INSERT INTO users VALUES ('" + email + "', '" + password + "');";
         final String ia = "INSERT INTO accounts VALUES ('" + email + "', '0'); ";
+        final String it = "INSERT INTO tokens (email) VALUES ('" + email + "');";
         try {
             Connection c; Statement s;
             c = DriverManager.getConnection(URL);
@@ -26,6 +27,8 @@ public class DB {
             s.executeUpdate(iu);
             s = c.createStatement();
             s.executeUpdate(ia);
+            s = c.createStatement();
+            s.executeUpdate(it);
             c.commit();             // commit transaction
             c.setAutoCommit(true);  // exit transaction mode
             c.close();
@@ -34,13 +37,58 @@ public class DB {
         return false; // exception occurred; malformed SQL query?
     }
 
+
+    public static Optional<String> createToken(final String email) {
+        String q = "UPDATE tokens SET token = ?, time = ? WHERE email = ?";
+        try (Connection c = DriverManager.getConnection(URL)){
+            String token = generateToken();
+            c.setAutoCommit(false);
+            PreparedStatement ps = c.prepareStatement(q);
+            ps.setString(1, token);
+            ps.setString(2, currentTime());
+            ps.setString(3, email);
+            ps.executeUpdate();
+            c.commit();
+            c.setAutoCommit(true);
+            return Optional.of(token);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return Optional.empty();
+    }
+
+    public static Optional<ArrayList<String>> getToken(final String email, final String token) {
+        String q = "SELECT * FROM tokens WHERE email = ? AND token = ?";
+        try (Connection c = DriverManager.getConnection(URL)) {
+            ArrayList<String> result = new ArrayList<>();
+            PreparedStatement ps = c.prepareStatement(q);
+            ps.setString(1, email);
+            ps.setString(2, token);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                result.add(rs.getString("token"));
+                result.add(rs.getString("time"));
+            } else {
+                return Optional.empty();
+            }
+            return Optional.of(result);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return Optional.empty();
+    }
+
+
     public static Optional<String> login( final String email, final String password ) {
-        final String q = "SELECT * FROM users WHERE email='" + email + "' AND password='" + password + "'";
+        final String q = "SELECT * FROM users WHERE email=? AND password=?";
         try {
-            Connection c; Statement s; ResultSet r; String u;
+            Connection c; ResultSet r; String u;
             c = DriverManager.getConnection(URL);
-            s = c.createStatement();
-            r = s.executeQuery(q);
+            PreparedStatement ps = c.prepareStatement(q);
+            ps.setString(1, email);
+            ps.setString(2, password);
+            r = ps.executeQuery();
+
             if ( r.next() ){ // true iff result set non-empty, implying email-password combination found.
                 u = r.getString("email");
             } else {
@@ -149,5 +197,42 @@ public class DB {
             return true;
         } catch ( Exception e ) {}
         return false; // exception occurred; malformed SQL query?
+    }
+
+
+    private static String generateToken() {
+        // Define the length of the random token
+        int tokenLength = 10;
+
+        // Define the characters to be used in the random token
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+        // Create a StringBuilder to store the random token
+        StringBuilder randomToken = new StringBuilder();
+
+        // Create a random number generator
+        Random random = new Random();
+
+        // Generate the random token by appending random characters
+        for (int i = 0; i < tokenLength; i++) {
+            int randomIndex = random.nextInt(characters.length());
+            char randomChar = characters.charAt(randomIndex);
+            randomToken.append(randomChar);
+        }
+
+        return randomToken.toString();
+    }
+
+    private static String currentTime() {
+        // Define the desired date-time format
+        String formatPattern = "yyyy-MM-dd HH:mm:ss.SSS";
+
+        // Get the current date-time
+        LocalDateTime currentTime = LocalDateTime.now();
+
+        // Create a DateTimeFormatter with the desired format pattern
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern(formatPattern);
+
+        return currentTime.format(formatter);
     }
 }
