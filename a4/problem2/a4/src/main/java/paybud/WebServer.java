@@ -78,7 +78,9 @@ public class WebServer {
         disalg = cslRemove(disalg, "SSLv3");   // Re-enabled to support legacy browsers. - PayBud dev
         disalg = cslRemove(disalg, "TLSv1");   // Re-enabled to support legacy browsers. - PayBud dev
         disalg = cslRemove(disalg, "TLSv1.1"); // Re-enabled to support legacy browsers. - PayBud dev
-        java.security.Security.setProperty("jdk.tls.disabledAlgorithms", disalg);
+//        java.security.Security.setProperty("jdk.tls.disabledAlgorithms", disalg);
+//        java.security.Security.setProperty("jdk.tls");
+        System.setProperty("https.protocols", "TLSv1.2");
 
         // Server's private key & certificate
         passwd = "password";
@@ -90,7 +92,7 @@ public class WebServer {
         truman.init(keysto);
 
         // Server's SSL configuration
-        sslctx = SSLContext.getInstance("TLS");
+        sslctx = SSLContext.getInstance("TLSv1.2");
         sslctx.init(keyman.getKeyManagers(), truman.getTrustManagers(), null);
 
         // Server creation
