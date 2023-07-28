@@ -122,4 +122,7 @@ I chose to log login events (including token authentication). When this XSS is b
 ```
 
 ### Part 2
+```shell
+john --wordlist=/usr/share/john/password.lst users.txt
+```
 
