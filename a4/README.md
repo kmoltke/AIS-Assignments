@@ -92,3 +92,25 @@ BEAST
 
 ### Part 4
 ![img.png](screenshots/img1.png)
+
+## Problem 3
+### Part 1
+Cross-site-scripting (XSS)
+
+### Part 2
+Legitimate login:
+```
+[HTTP-Dispatcher] INFO PayBud - /127.0.0.1:34292 - [2023-07-28 09:49:29]: emailalice@mailinator.com logged in.
+[HTTP-Dispatcher] INFO PayBud - /127.0.0.1:57126 - [2023-07-28 09:49:32]: token sent to emailalice@mailinator.com
+[HTTP-Dispatcher] INFO PayBud - /127.0.0.1:34292 - [2023-07-28 09:49:46]: emailalice@mailinator.com was successfully authenticated.
+```
+
+Malicious login (abnormal log behaviour):
+```
+
+```
+I chose to log login events (including token authentication). When this XSS is being exploited, there will be no log for the login - which is bad. Of course if you logged all other operations e.g. withdraw, deposit, send etc. you would see an abnormality in the log, since there would not be the above three lines. But this is still not good practice, since an attacker would still harm confidentiality (i.e. see user's account balance) without the system knowing at all. To avoid this you would have to log when a user gets redirected to the `menuPage`. Then you would see the redirection but not the authentication lines in the log.
+
+
+
+### Part 3
