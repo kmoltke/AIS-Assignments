@@ -44,6 +44,7 @@ import org.json.simple.JSONObject;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import org.passay.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -287,6 +288,14 @@ public class WebServer {
         final boolean userExists = result.isPresent();
         if ( userExists ){
             respond(io, 403, "application/json", json("User already exists."));
+            return;
+        }
+
+        PasswordValidator validator = getPasswordValidator();
+        RuleResult ruleResult = validator.validate(new PasswordData(qMap.get("password")));
+
+        if (!ruleResult.isValid()) {
+            respond(io, 400, "application/json", json("Password is not strong enough"));
             return;
         }
 
@@ -710,5 +719,17 @@ public class WebServer {
     // HELPERS
     private static void log(HttpExchange io, String msg) {
         log.info(io.getRemoteAddress().toString() + " - [" + dateformat.format(new Date()) + "]: " + msg);
+    }
+
+    public static PasswordValidator getPasswordValidator() {
+        PasswordValidator validator = new PasswordValidator(
+                new LengthRule(8, 16),                                      // Minimum and maximum password length
+                new CharacterRule(EnglishCharacterData.UpperCase, 1),  // Require at least one uppercase letter
+                new CharacterRule(EnglishCharacterData.LowerCase, 1),  // Require at least one lowercase letter
+                new CharacterRule(EnglishCharacterData.Digit, 1),      // Require at least one digit
+                new CharacterRule(EnglishCharacterData.Special, 1)     // Require at least one special character
+        );
+
+        return validator;
     }
 }
