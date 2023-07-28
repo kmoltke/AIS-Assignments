@@ -114,3 +114,12 @@ I chose to log login events (including token authentication). When this XSS is b
 
 
 ### Part 3
+
+## Problem 4
+### Part 1
+```
+
+```
+
+### Part 2
+
