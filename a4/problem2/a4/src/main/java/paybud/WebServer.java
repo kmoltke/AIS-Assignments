@@ -341,32 +341,6 @@ public class WebServer {
         respond(io, 200, "application/json", json("Password successfully e-mailed to " + qMap.get("email")));
     }
 
-//    private static void login(final HttpExchange io){
-//        if ( authenticated(io) ){
-//            respond(io, 409, "application/json", json("Already logged in."));
-//            return;
-//        }
-//
-//        final Map<String,String>  qMap = queryMap(io);
-//        final String email = qMap.get("email");
-//        final String password = qMap.get("password");
-//        final Optional<String> result = DB.login(email, password);
-//
-//        final boolean loginSuccess = (result != null);
-//        if ( ! loginSuccess ){
-//            respond(io, 400, "application/json", json("Syntax error in the request."));
-//            return;
-//        }
-//
-//        final boolean userExists = result.isPresent();
-//        if ( ! userExists ){
-//            respond(io, 401, "application/json", json("Email and password are invalid."));
-//        } else {
-//            authenticate(io, result.get());
-//            respond(io, 200, "application/json", json("Login successful."));
-//        }
-//    }
-
     private static void login(final HttpExchange io){
         if ( authenticated(io) ){
             respond(io, 409, "application/json", json("Already logged in."));
