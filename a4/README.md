@@ -114,3 +114,25 @@ I chose to log login events (including token authentication). When this XSS is b
 
 
 ### Part 3
+
+## Problem 4
+### Part 1
+```
+
+```
+
+### Part 2
+```shell
+john --wordlist=/usr/share/john/password.lst users.txt
+```
+
+![img.png](screenshots/img2.png)
+
+### Part 3
+Following password policies:
+- Minimum 8 and maximum 16 characters
+- Require at least one uppercase letter
+- Require at least one lowercase letter
+- Require at least one digit
+- Require at least one special character
+

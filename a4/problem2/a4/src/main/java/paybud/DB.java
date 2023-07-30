@@ -4,19 +4,33 @@ package paybud;
  * Interface to the PayBud database.
  */
 
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
 
 public class DB {
 
-    private static final String URL = "jdbc:sqlite:db/paybud.db"; // database we are connecting to.
+    private static final String URL = "jdbc:sqlite:db/paybud_salt.db"; // database we are connecting to.
     
     public static boolean create( final String email, final String password ) {
-        final String iu = "INSERT INTO users VALUES ('" + email + "', '" + password + "');";
+
+        byte[] salt = genSalt();
+        String hashStr = null;
+        try {
+            hashStr = Base64.getEncoder().encodeToString(hashPwd(password, salt));
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            throw new RuntimeException(e);
+        }
+        String saltStr = Base64.getEncoder().encodeToString(salt);
+
+        final String iu = "INSERT INTO users VALUES ('" + email + "', '" + saltStr + "', '" + hashStr + "');";
         final String ia = "INSERT INTO accounts VALUES ('" + email + "', '0'); ";
         final String it = "INSERT INTO tokens (email) VALUES ('" + email + "');";
         try {
@@ -35,6 +49,20 @@ public class DB {
             return true;
         } catch ( Exception e ) {}
         return false; // exception occurred; malformed SQL query?
+    }
+
+    private static byte[] genSalt() {
+        SecureRandom random = new SecureRandom();
+        byte[] salt = new byte[32];
+        random.nextBytes(salt);
+        return salt;
+    }
+
+    private static byte[] hashPwd(String password, byte[] salt) throws NoSuchAlgorithmException, InvalidKeySpecException {
+        KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 100000, 256);
+        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+
+        return factory.generateSecret(spec).getEncoded();
     }
 
 
@@ -79,25 +107,32 @@ public class DB {
     }
 
 
+
+
     public static Optional<String> login( final String email, final String password ) {
-        final String q = "SELECT * FROM users WHERE email=? AND password=?";
-        try {
-            Connection c; ResultSet r; String u;
-            c = DriverManager.getConnection(URL);
+        final String q = "SELECT * FROM users WHERE email=?";
+        try (Connection c = DriverManager.getConnection(URL)) {
+            String u; String hashword; String saltStr;
             PreparedStatement ps = c.prepareStatement(q);
             ps.setString(1, email);
-            ps.setString(2, password);
-            r = ps.executeQuery();
-
-            if ( r.next() ){ // true iff result set non-empty, implying email-password combination found.
-                u = r.getString("email");
+            ResultSet r = ps.executeQuery();
+            if (r.next()) {
+                hashword = r.getString("hashword");
+                saltStr = r.getString("salt");
+                byte[] salt = Base64.getDecoder().decode(saltStr);
+                byte[] hash = Base64.getDecoder().decode(hashword);
+                if (Arrays.equals(hash, hashPwd(password, salt))) {
+                    u = r.getString("email");
+                } else {
+                    u = null;
+                }
             } else {
                 u = null;
             }
-            c.close();
-            return Optional.ofNullable(u); // empty iff u = null
-        } catch ( Exception e ) {}
-        return null; // exception occurred; malformed SQL query?
+            return Optional.ofNullable(u);
+        } catch (SQLException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+            throw new RuntimeException(e);
+        }
     }
     
     public static Optional<String> user( final String email ) {

@@ -7,22 +7,20 @@ package paybud;
 // New imports
 import com.sun.net.httpserver.HttpsServer;
 import com.sun.net.httpserver.HttpsConfigurator;
+
+import javax.crypto.Mac;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManagerFactory;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.UnrecoverableKeyException;
-import java.security.KeyManagementException;
+import java.security.*;
 import java.security.cert.CertificateException;
-import java.security.NoSuchAlgorithmException;
 import java.io.FileInputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpExchange;
@@ -35,27 +33,26 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Scanner;
-import java.util.Optional;
 import java.util.function.Function;
 import org.json.simple.JSONObject;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
+import org.passay.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 
 public class WebServer {
     private static final String  HOSTNAME = "localhost";
     private static final int     PORT     = 5000;
     private static final int     BACKLOG  = -1;
     private static final Charset CHARSET  = StandardCharsets.UTF_8;
+
+    private static final String HMAC_SHA512 = "HmacSHA512";
+    private static SecretKey hmacKey;
 
     private static final Logger log = LoggerFactory.getLogger("PayBud");
     private static final DateFormat dateformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -80,7 +77,9 @@ public class WebServer {
         disalg = cslRemove(disalg, "TLSv1.1"); // Re-enabled to support legacy browsers. - PayBud dev
 //        java.security.Security.setProperty("jdk.tls.disabledAlgorithms", disalg);
 //        java.security.Security.setProperty("jdk.tls");
-        System.setProperty("https.protocols", "TLSv1.2");
+//        System.setProperty("https.protocols", "TLSv1.2");
+
+        java.security.Security.setProperty("jdk.tls.client.protocols", "TLSv1.2");
 
         // Server's private key & certificate
         passwd = "password";
@@ -90,6 +89,15 @@ public class WebServer {
         keysto.load(new FileInputStream("paybud.p12"), passwd.toCharArray());
         keyman.init(keysto, passwd.toCharArray());
         truman.init(keysto);
+
+        String hmacKeyAlias = "HMACkey";
+        KeyStore.SecretKeyEntry secretKey = null;
+        try {
+            secretKey = (KeyStore.SecretKeyEntry) keysto.getEntry(hmacKeyAlias, new KeyStore.PasswordProtection(passwd.toCharArray()));
+        } catch (UnrecoverableEntryException e) {
+            throw new RuntimeException(e);
+        }
+        hmacKey = secretKey.getSecretKey();
 
         // Server's SSL configuration
         sslctx = SSLContext.getInstance("TLSv1.2");
@@ -290,6 +298,14 @@ public class WebServer {
             return;
         }
 
+        PasswordValidator validator = getPasswordValidator();
+        RuleResult ruleResult = validator.validate(new PasswordData(qMap.get("password")));
+
+        if (!ruleResult.isValid()) {
+            respond(io, 400, "application/json", json("Password is not strong enough"));
+            return;
+        }
+
         final boolean createSuccess = DB.create(qMap.get("email"), qMap.get("password"));
         if ( ! createSuccess ){
             respond(io, 400, "application/json", json("Syntax error in user creation query."));
@@ -332,32 +348,6 @@ public class WebServer {
         respond(io, 200, "application/json", json("Password successfully e-mailed to " + qMap.get("email")));
     }
 
-//    private static void login(final HttpExchange io){
-//        if ( authenticated(io) ){
-//            respond(io, 409, "application/json", json("Already logged in."));
-//            return;
-//        }
-//
-//        final Map<String,String>  qMap = queryMap(io);
-//        final String email = qMap.get("email");
-//        final String password = qMap.get("password");
-//        final Optional<String> result = DB.login(email, password);
-//
-//        final boolean loginSuccess = (result != null);
-//        if ( ! loginSuccess ){
-//            respond(io, 400, "application/json", json("Syntax error in the request."));
-//            return;
-//        }
-//
-//        final boolean userExists = result.isPresent();
-//        if ( ! userExists ){
-//            respond(io, 401, "application/json", json("Email and password are invalid."));
-//        } else {
-//            authenticate(io, result.get());
-//            respond(io, 200, "application/json", json("Login successful."));
-//        }
-//    }
-
     private static void login(final HttpExchange io){
         if ( authenticated(io) ){
             respond(io, 409, "application/json", json("Already logged in."));
@@ -372,7 +362,7 @@ public class WebServer {
         final boolean loginSuccess = (result != null);
         if ( ! loginSuccess ){
             respond(io, 400, "application/json", json("Syntax error in the request."));
-            log(io, email + " and " + password + " has a syntax error.");
+            log(io, "has a syntax error.");
             return;
         }
 
@@ -555,9 +545,23 @@ public class WebServer {
     private static void createCookie(final HttpExchange io, final String email){
         List<String> l = new ArrayList<String>();
         l.add("email=" + email + "; path=/");
-        l.add("hash=" + "YOURHASHGOESHERE" + "; path=/");
+        l.add("hash=" + calculateHMAC(email, hmacKey) + "; path=/");
         io.getResponseHeaders().put("Set-Cookie", l);
     }
+
+    public static String calculateHMAC(String data, SecretKey key) {
+//        SecretKeySpec secretKeySpec = new SecretKeySpec(key.getBytes(), HMAC_SHA512);
+        Mac mac = null;
+        try {
+            mac = Mac.getInstance(HMAC_SHA512);
+//            mac.init(secretKeySpec);
+            mac.init(key);
+            return Base64.getUrlEncoder().encodeToString(mac.doFinal(data.getBytes()));
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static void deleteCookie(final HttpExchange io){
         List<String> l = new ArrayList<String>();
         l.add("email=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/");
@@ -579,13 +583,10 @@ public class WebServer {
         if ( ! userExists ){
             return false; // user given in cookie does not exist in PayBud
         }
+        final byte[] hash = Base64.getUrlDecoder().decode(getHash(io));
+        final byte[] calc = Base64.getUrlDecoder().decode(calculateHMAC(getEmail(io), hmacKey));
 
-        final boolean hashGood = getHash(io).equals( "YOURHASHGOESHERE" );
-        if ( ! hashGood ){
-            return false; // hash given in cookie failed integrity check
-         }
-
-        return true;
+        return Arrays.equals(hash, calc); // hash given in cookie failed integrity check
     }
     private static String getEmail(final HttpExchange io){
         String[] pairs = io.getRequestHeaders().get("Cookie").get(0).split(" *; *");
@@ -710,5 +711,17 @@ public class WebServer {
     // HELPERS
     private static void log(HttpExchange io, String msg) {
         log.info(io.getRemoteAddress().toString() + " - [" + dateformat.format(new Date()) + "]: " + msg);
+    }
+
+    public static PasswordValidator getPasswordValidator() {
+        PasswordValidator validator = new PasswordValidator(
+                new LengthRule(8, 16),                                      // Minimum and maximum password length
+                new CharacterRule(EnglishCharacterData.UpperCase, 1),  // Require at least one uppercase letter
+                new CharacterRule(EnglishCharacterData.LowerCase, 1),  // Require at least one lowercase letter
+                new CharacterRule(EnglishCharacterData.Digit, 1),      // Require at least one digit
+                new CharacterRule(EnglishCharacterData.Special, 1)     // Require at least one special character
+        );
+
+        return validator;
     }
 }
