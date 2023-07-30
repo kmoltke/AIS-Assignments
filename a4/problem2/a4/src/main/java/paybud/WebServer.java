@@ -9,6 +9,7 @@ import com.sun.net.httpserver.HttpsServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 
 import javax.crypto.Mac;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.KeyManagerFactory;
@@ -51,6 +52,7 @@ public class WebServer {
     private static final Charset CHARSET  = StandardCharsets.UTF_8;
 
     private static final String HMAC_SHA512 = "HmacSHA512";
+    private static SecretKey hmacKey;
 
     private static final Logger log = LoggerFactory.getLogger("PayBud");
     private static final DateFormat dateformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -87,6 +89,15 @@ public class WebServer {
         keysto.load(new FileInputStream("paybud.p12"), passwd.toCharArray());
         keyman.init(keysto, passwd.toCharArray());
         truman.init(keysto);
+
+        String hmacKeyAlias = "HMACkey";
+        KeyStore.SecretKeyEntry secretKey = null;
+        try {
+            secretKey = (KeyStore.SecretKeyEntry) keysto.getEntry(hmacKeyAlias, new KeyStore.PasswordProtection(passwd.toCharArray()));
+        } catch (UnrecoverableEntryException e) {
+            throw new RuntimeException(e);
+        }
+        hmacKey = secretKey.getSecretKey();
 
         // Server's SSL configuration
         sslctx = SSLContext.getInstance("TLSv1.2");
@@ -534,20 +545,21 @@ public class WebServer {
     private static void createCookie(final HttpExchange io, final String email){
         List<String> l = new ArrayList<String>();
         l.add("email=" + email + "; path=/");
-        l.add("hash=" + calculateHMAC(email, "test") + "; path=/");
+        l.add("hash=" + calculateHMAC(email, hmacKey) + "; path=/");
         io.getResponseHeaders().put("Set-Cookie", l);
     }
 
-    public static String calculateHMAC(String data, String key) {
-        SecretKeySpec secretKeySpec = new SecretKeySpec(key.getBytes(), HMAC_SHA512);
+    public static String calculateHMAC(String data, SecretKey key) {
+//        SecretKeySpec secretKeySpec = new SecretKeySpec(key.getBytes(), HMAC_SHA512);
         Mac mac = null;
         try {
             mac = Mac.getInstance(HMAC_SHA512);
-            mac.init(secretKeySpec);
+//            mac.init(secretKeySpec);
+            mac.init(key);
+            return Base64.getUrlEncoder().encodeToString(mac.doFinal(data.getBytes()));
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException(e);
         }
-        return Base64.getUrlEncoder().encodeToString(mac.doFinal(data.getBytes()));
     }
 
     private static void deleteCookie(final HttpExchange io){
@@ -572,7 +584,7 @@ public class WebServer {
             return false; // user given in cookie does not exist in PayBud
         }
         final byte[] hash = Base64.getUrlDecoder().decode(getHash(io));
-        final byte[] calc = Base64.getUrlDecoder().decode(calculateHMAC(getEmail(io), "test"));
+        final byte[] calc = Base64.getUrlDecoder().decode(calculateHMAC(getEmail(io), hmacKey));
 
         return Arrays.equals(hash, calc); // hash given in cookie failed integrity check
     }
