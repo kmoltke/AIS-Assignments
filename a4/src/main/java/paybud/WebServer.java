@@ -547,6 +547,7 @@ public class WebServer {
         l.add("email=" + email + "; path=/");
         l.add("hash=" + calculateHMAC(email, hmacKey) + "; path=/");
         io.getResponseHeaders().put("Set-Cookie", l);
+        log(io, "test cookie");
     }
 
     public static String calculateHMAC(String data, SecretKey key) {
