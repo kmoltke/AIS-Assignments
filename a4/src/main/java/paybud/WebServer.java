@@ -550,11 +550,9 @@ public class WebServer {
     }
 
     public static String calculateHMAC(String data, SecretKey key) {
-//        SecretKeySpec secretKeySpec = new SecretKeySpec(key.getBytes(), HMAC_SHA512);
         Mac mac = null;
         try {
             mac = Mac.getInstance(HMAC_SHA512);
-//            mac.init(secretKeySpec);
             mac.init(key);
             return Base64.getUrlEncoder().encodeToString(mac.doFinal(data.getBytes()));
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {

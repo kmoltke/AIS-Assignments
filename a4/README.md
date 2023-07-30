@@ -80,6 +80,18 @@ TLS 1.0 and 1.1 use older cryptographic algorithms, some of which have been foun
 ## Problem 2
 //TODO
 ### Part 1
+1. U -> C: {email, password}
+   - The user (U) initiates the login process by sending their login credentials (email and password) to the client (C).
+2. C -> S: {email, password, 2FA_token}K
+   - The client (C) forwards the received login credentials along with the user's 2FA token encrypted with the shared secret key K to the server (S).
+3. S -> U: {2FA_response}K
+   - The server (S) validates the 2FA token, generates a 2FA response, and sends it encrypted with the shared secret key K to the user (U).
+4. U -> C: {2FA_response}K
+   - The user (U) forwards the 2FA response encrypted with the shared secret key K to the client (C).
+5. C -> S: {2FA_response}K
+   - The client (C) forwards the 2FA response encrypted with the shared secret key K to the server (S) for final validation.
+6. S -> C: {menuPage}K
+   - If the 2FA response is valid, the server (S) sends the menu page encrypted with the shared secret key K to the client (C), granting access to the user (U).
 
 ### Part 2
 //TODO: DEscribe

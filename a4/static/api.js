@@ -96,7 +96,7 @@ function tokenReq() {
         console.log("Success: 'authentication'.");
         text = response.text;
         console.log(text);
-        window.location.href = "https://localhost:5000/menu";
+        window.location.href = "menu";
     }).fail( function (jqXHR, textStatus, errorThrown) {
         console.log("Error: 'authentication'.");
         text = jqXHR.responseJSON.text;
