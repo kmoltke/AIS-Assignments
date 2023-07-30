@@ -7,22 +7,19 @@ package paybud;
 // New imports
 import com.sun.net.httpserver.HttpsServer;
 import com.sun.net.httpserver.HttpsConfigurator;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManagerFactory;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.UnrecoverableKeyException;
-import java.security.KeyManagementException;
+import java.security.*;
 import java.security.cert.CertificateException;
-import java.security.NoSuchAlgorithmException;
 import java.io.FileInputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpExchange;
@@ -35,10 +32,6 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Scanner;
-import java.util.Optional;
 import java.util.function.Function;
 import org.json.simple.JSONObject;
 import java.util.concurrent.Executor;
@@ -50,13 +43,14 @@ import org.slf4j.LoggerFactory;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 
 public class WebServer {
     private static final String  HOSTNAME = "localhost";
     private static final int     PORT     = 5000;
     private static final int     BACKLOG  = -1;
     private static final Charset CHARSET  = StandardCharsets.UTF_8;
+
+    private static final String HMAC_SHA512 = "HmacSHA512";
 
     private static final Logger log = LoggerFactory.getLogger("PayBud");
     private static final DateFormat dateformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -81,7 +75,9 @@ public class WebServer {
         disalg = cslRemove(disalg, "TLSv1.1"); // Re-enabled to support legacy browsers. - PayBud dev
 //        java.security.Security.setProperty("jdk.tls.disabledAlgorithms", disalg);
 //        java.security.Security.setProperty("jdk.tls");
-        System.setProperty("https.protocols", "TLSv1.2");
+//        System.setProperty("https.protocols", "TLSv1.2");
+
+        java.security.Security.setProperty("jdk.tls.client.protocols", "TLSv1.2");
 
         // Server's private key & certificate
         passwd = "password";
@@ -355,7 +351,7 @@ public class WebServer {
         final boolean loginSuccess = (result != null);
         if ( ! loginSuccess ){
             respond(io, 400, "application/json", json("Syntax error in the request."));
-            log(io, email + " and " + password + " has a syntax error.");
+            log(io, "has a syntax error.");
             return;
         }
 
@@ -538,9 +534,22 @@ public class WebServer {
     private static void createCookie(final HttpExchange io, final String email){
         List<String> l = new ArrayList<String>();
         l.add("email=" + email + "; path=/");
-        l.add("hash=" + "YOURHASHGOESHERE" + "; path=/");
+        l.add("hash=" + calculateHMAC(email, "test") + "; path=/");
         io.getResponseHeaders().put("Set-Cookie", l);
     }
+
+    public static String calculateHMAC(String data, String key) {
+        SecretKeySpec secretKeySpec = new SecretKeySpec(key.getBytes(), HMAC_SHA512);
+        Mac mac = null;
+        try {
+            mac = Mac.getInstance(HMAC_SHA512);
+            mac.init(secretKeySpec);
+        } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new RuntimeException(e);
+        }
+        return Base64.getUrlEncoder().encodeToString(mac.doFinal(data.getBytes()));
+    }
+
     private static void deleteCookie(final HttpExchange io){
         List<String> l = new ArrayList<String>();
         l.add("email=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/");
@@ -562,13 +571,10 @@ public class WebServer {
         if ( ! userExists ){
             return false; // user given in cookie does not exist in PayBud
         }
+        final byte[] hash = Base64.getUrlDecoder().decode(getHash(io));
+        final byte[] calc = Base64.getUrlDecoder().decode(calculateHMAC(getEmail(io), "test"));
 
-        final boolean hashGood = getHash(io).equals( "YOURHASHGOESHERE" );
-        if ( ! hashGood ){
-            return false; // hash given in cookie failed integrity check
-         }
-
-        return true;
+        return Arrays.equals(hash, calc); // hash given in cookie failed integrity check
     }
     private static String getEmail(final HttpExchange io){
         String[] pairs = io.getRequestHeaders().get("Cookie").get(0).split(" *; *");
