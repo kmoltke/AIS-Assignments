@@ -80,7 +80,7 @@ The server still supports TLS version 1.0 and 1.1.
 TLS 1.0 and 1.1 use older cryptographic algorithms, some of which have been found to be weak over time due to advances in computational power and cryptanalysis. This could expose users to attackers who can exploit these weak encryption algorithms to intercept or manipulate data. These attacks could potentially compromise the confidentiality and integrity of data being transmitted between the user's browser and the server.
 
 ## Problem 2
-//TODO
+
 ### Part 1
 1. U -> C: {email, password}
    - The user (U) initiates the login process by sending their login credentials (email and password) to the client (C).
