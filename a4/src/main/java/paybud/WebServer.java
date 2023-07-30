@@ -711,7 +711,7 @@ public class WebServer {
         log.info(io.getRemoteAddress().toString() + " - [" + dateformat.format(new Date()) + "]: " + msg);
     }
 
-    public static PasswordValidator getPasswordValidator() {
+    private static PasswordValidator getPasswordValidator() {
         PasswordValidator validator = new PasswordValidator(
                 new LengthRule(8, 16),                                      // Minimum and maximum password length
                 new CharacterRule(EnglishCharacterData.UpperCase, 1),  // Require at least one uppercase letter

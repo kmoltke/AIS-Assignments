@@ -93,17 +93,30 @@ TLS 1.0 and 1.1 use older cryptographic algorithms, some of which have been foun
 6. S -> C: {menuPage}K
    - If the 2FA response is valid, the server (S) sends the menu page encrypted with the shared secret key K to the client (C), granting access to the user (U).
 
-### Part 2
-//TODO: DEscribe
-LOGJAM
+**MitM:**
+The attacker, who is in the middle of the communication, does not possess the shared secret key required to decrypt and encrypt messages correctly.
 
-BEAST
+### Part 2
+The certificate is not signed by a CA - i.e. it is self-signed. In general, it means that the site is not signed by a CA, so it could potentially be another site than what you intend to visit (e.g. by a MitM attack). 
+For this scenario, it does not matter since we are in a development scenario.
 
 ### Part 3
 
+- **LOGJAM:** A security vulnerability that allows attackers to weaken encrypted connections by exploiting weak Diffie-Hellman key exchange parameters.
+- **BEAST:** A security vulnerability that enables attackers to decrypt parts of encrypted SSL/TLS traffic by exploiting weaknesses in the protocol's block cipher mode of operation.
 
 ### Part 4
 ![img.png](screenshots/img1.png)
+
+Delete this line in WebServer.java:
+```java
+java.security.Security.setProperty("jdk.tls.disabledAlgorithms", disalg);
+```
+
+Add this line instead:
+```java
+java.security.Security.setProperty("jdk.tls.client.protocols", "TLSv1.2");
+```
 
 ## Problem 3
 ### Part 1
@@ -123,15 +136,134 @@ Malicious login (abnormal log behaviour):
 ```
 I chose to log login events (including token authentication). When this XSS is being exploited, there will be no log for the login - which is bad. Of course if you logged all other operations e.g. withdraw, deposit, send etc. you would see an abnormality in the log, since there would not be the above three lines. But this is still not good practice, since an attacker would still harm confidentiality (i.e. see user's account balance) without the system knowing at all. To avoid this you would have to log when a user gets redirected to the `menuPage`. Then you would see the redirection but not the authentication lines in the log.
 
-
-
 ### Part 3
+Create a keyEntry for the `HMACkey`:
+````shell
+keytool -genseckey -keystore paybud.p12 -storetype pkcs12 -keyalg HMacSHA512 -keysize 2048 -alias HMACkey -keypass password
+````
+
+Retrieve the `HMACkey` from the `KeyStore`:
+````java
+String hmacKeyAlias = "HMACkey";
+KeyStore.SecretKeyEntry secretKey = null;
+try {
+   secretKey = (KeyStore.SecretKeyEntry) keysto.getEntry(hmacKeyAlias, new KeyStore.PasswordProtection(passwd.toCharArray()));
+} catch (UnrecoverableEntryException e) {
+   throw new RuntimeException(e);
+}
+hmacKey = secretKey.getSecretKey();
+````
+
+Create cookie with the calculated HMACkey:
+```java
+ private static void createCookie(final HttpExchange io, final String email){
+     List<String> l = new ArrayList<String>();
+     l.add("email=" + email + "; path=/");
+     l.add("hash=" + calculateHMAC(email, hmacKey) + "; path=/");
+     io.getResponseHeaders().put("Set-Cookie", l);
+ }
+
+ public static String calculateHMAC(String data, SecretKey key) {
+     Mac mac = null;
+     try {
+         mac = Mac.getInstance(HMAC_SHA512);
+         mac.init(key);
+         return Base64.getUrlEncoder().encodeToString(mac.doFinal(data.getBytes()));
+     } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+         throw new RuntimeException(e);
+     }
+ }
+```
+
+In the `goodCookie` function verify the cookie using the `calculateHMAC` function:
+```java
+final byte[] hash = Base64.getUrlDecoder().decode(getHash(io));
+final byte[] calc = Base64.getUrlDecoder().decode(calculateHMAC(getEmail(io), hmacKey));
+
+return Arrays.equals(hash, calc);
+```
 
 ## Problem 4
 ### Part 1
+In the DB.java file:
+
+The `create` function now first hashes the passwords with salt and store them Base64 encoded:
+```java
+public static boolean create( final String email, final String password ) {
+
+  byte[] salt = genSalt();
+  String hashStr = null;
+  try {
+      hashStr = Base64.getEncoder().encodeToString(hashPwd(password, salt));
+  } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+      throw new RuntimeException(e);
+  }
+  String saltStr = Base64.getEncoder().encodeToString(salt);
+
+  final String iu = "INSERT INTO users VALUES ('" + email + "', '" + saltStr + "', '" + hashStr + "');";
+  final String ia = "INSERT INTO accounts VALUES ('" + email + "', '0'); ";
+  final String it = "INSERT INTO tokens (email) VALUES ('" + email + "');";
+  try {
+      Connection c; Statement s;
+      c = DriverManager.getConnection(URL);
+      c.setAutoCommit(false); // enter transaction mode
+      s = c.createStatement();
+      s.executeUpdate(iu);
+      s = c.createStatement();
+      s.executeUpdate(ia);
+      s = c.createStatement();
+      s.executeUpdate(it);
+      c.commit();             // commit transaction
+      c.setAutoCommit(true);  // exit transaction mode
+      c.close();
+      return true;
+  } catch ( Exception e ) {}
+  return false; // exception occurred; malformed SQL query?
+}
+
+private static byte[] genSalt() {
+  SecureRandom random = new SecureRandom();
+  byte[] salt = new byte[32];
+  random.nextBytes(salt);
+  return salt;
+}
+
+private static byte[] hashPwd(String password, byte[] salt) throws NoSuchAlgorithmException, InvalidKeySpecException {
+  KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 100000, 256);
+  SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+
+  return factory.generateSecret(spec).getEncoded();
+}
 ```
 
-```
+The `login` function must now decode this and uncypher (with the same `hashPwd` function) this:
+````java
+public static Optional<String> login( final String email, final String password ) {
+  final String q = "SELECT * FROM users WHERE email=?";
+  try (Connection c = DriverManager.getConnection(URL)) {
+      String u; String hashword; String saltStr;
+      PreparedStatement ps = c.prepareStatement(q);
+      ps.setString(1, email);
+      ResultSet r = ps.executeQuery();
+      if (r.next()) {
+          hashword = r.getString("hashword");
+          saltStr = r.getString("salt");
+          byte[] salt = Base64.getDecoder().decode(saltStr);
+          byte[] hash = Base64.getDecoder().decode(hashword);
+          if (Arrays.equals(hash, hashPwd(password, salt))) {
+              u = r.getString("email");
+          } else {
+              u = null;
+          }
+      } else {
+          u = null;
+      }
+      return Optional.ofNullable(u);
+  } catch (SQLException | NoSuchAlgorithmException | InvalidKeySpecException e) {
+      throw new RuntimeException(e);
+  }
+}
+````
 
 ### Part 2
 ```shell
@@ -140,11 +272,48 @@ john --wordlist=/usr/share/john/password.lst users.txt
 
 ![img.png](screenshots/img2.png)
 
+`--wordlist=/usr/share/john/password.lst` specifies the location of the wordlist file to be used by JohnTheRipper for attempting various combinations of passwords.
+
+`users.txt` is the name of the file containing the hashed passwords that you want to crack.
+
+JohnTheRipper will read the hashed passwords from `users.txt` and try each password entry against the wordlist `password.lst` to see if any of the hashes match. If a match is found, it means that the password in the wordlist is the one that corresponds to the hashed password in users.txt.
+
+The purpose of using salt is to prevent attackers from using precomputed tables (rainbow tables) that contain a large number of precomputed hashes for commonly used passwords. Without salt, an attacker could simply look up the hash in the rainbow table and find the corresponding password. However, with salt, the attacker would need to generate new rainbow tables for each unique salt value, which significantly increases the computational effort and makes the attack much slower and more challenging.
+
 ### Part 3
-Following password policies:
+Chosen password policies:
 - Minimum 8 and maximum 16 characters
 - Require at least one uppercase letter
 - Require at least one lowercase letter
 - Require at least one digit
 - Require at least one special character
 
+````java
+private static PasswordValidator getPasswordValidator() {
+  PasswordValidator validator = new PasswordValidator(
+       new LengthRule(8, 16),                                 // Minimum and maximum password length
+       new CharacterRule(EnglishCharacterData.UpperCase, 1),  // Require at least one uppercase letter
+       new CharacterRule(EnglishCharacterData.LowerCase, 1),  // Require at least one lowercase letter
+       new CharacterRule(EnglishCharacterData.Digit, 1),      // Require at least one digit
+       new CharacterRule(EnglishCharacterData.Special, 1)     // Require at least one special character
+  );
+
+  return validator;
+}
+````
+
+In the `create` function, validate the password:
+````java
+PasswordValidator validator = getPasswordValidator();
+RuleResult ruleResult = validator.validate(new PasswordData(qMap.get("password")));
+
+if (!ruleResult.isValid()) {
+   respond(io, 400, "application/json", json("Password is not strong enough"));
+   return;
+}
+````
+
+### Part 4
+1. To prevent Offline Dictionary / Brute-Force Attacks on weak passwords like PIN numbers, you can implement rate-limiting mechanisms, which restrict the number of login attempts allowed within a specific time frame, thus slowing down the attack.
+
+2. Besides 2FA, to prevent Online Dictionary / Brute-Force Attacks, you can enforce account lockouts after a certain number of failed login attempts, implement CAPTCHA challenges, and use anomaly detection to identify and block suspicious login patterns in real-time.
