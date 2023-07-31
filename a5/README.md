@@ -3,6 +3,23 @@ _Kristian Moltke Reitzel, krei@itu.dk_
 
 Report and source code is available [here](https://github.com/kmoltke/AIS-Assignments/tree/main/a5)
 
+<!-- TOC -->
+* [Assignment 5](#assignment-5)
+  * [Problem 1](#problem-1)
+    * [Part 1](#part-1)
+    * [Part 2](#part-2)
+    * [Part 3](#part-3)
+    * [Part 4](#part-4)
+  * [Problem 2](#problem-2)
+    * [Part 1](#part-1-1)
+    * [Part 2](#part-2-1)
+  * [Problem 3](#problem-3)
+    * [Part 1](#part-1-2)
+    * [Part 2](#part-2-2)
+    * [Part 3](#part-3-1)
+    * [Part 4](#part-4-1)
+<!-- TOC -->
+
 ## Problem 1
 ### Part 1
 File A:
