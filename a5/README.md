@@ -41,3 +41,8 @@ Revoke all `write` permissions for user:
 
 ![img.png](screenshots/img.png)
 
+## Problem 2
+### Part 1
+Domain: `dev-c6f6btnyigx2q7v8.eu.auth0.com`
+Client ID: `PPwV1wzDOd8QujEbWCaM3R5JrFI64pUf`
+
