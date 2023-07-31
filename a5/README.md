@@ -112,7 +112,7 @@ After the Alice has provided her credentials (step 3):
    "age": 2,
    "breed": "terrier",
    "name": "toto"
-        }
+}
 ````
 
 ### Part 2
@@ -132,19 +132,23 @@ After the Alice has provided her credentials (step 3):
 
 ### Part 3
 1. default INPUT.
-- `allow` = `false`
-- because `user_is_owner` is `false` for "bob" since his title is `"employee"`
+- `allow` = `true`
+- `user_is_owner` is `false` for "bob" since his title is `"employee"`
+- but `user_is_employee` AND `action_is_read` are `true`, so `allow` is also true.
 2. user = alice.
 - `allow` = `true`
 - because `user_is_owner` is `true` for "alice" since her title is `"owner"`
 3. user = dave.
 - `allow` = `false`
-- because `user_is_owner` is `false` for "dave" (his title is `"customer"`). Additionally, `user_is_customer`, `action_is_read`, and `pet_is_adopted` are `true` but not sufficient to make `allow` true.
+- because all attributes are false. He almost gets all the checks in the last `allow if` statement, but unfortunately, dog123 is not adopted, so that one returns `false` as well.
 
 ### Part 4
 Modification to POLICY:
 ```rego
-allow if input.action == "eat" && pet_is_less_than_or_equal_to_2_years
+allow if {
+	input.action == "eat" 
+    pet_is_less_than_or_equal_to_2_years
+}
 
 pet_is_less_than_or_equal_to_2_years {
     input_age := data.pet_attributes[input.resource].age
@@ -166,6 +170,6 @@ pet_is_less_than_or_equal_to_2_years {
 {
    "user": "bob",
    "action": "eat",
-   "resource": "cat123"
+   "resource": "dog456"
 }
 ````
