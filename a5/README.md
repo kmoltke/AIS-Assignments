@@ -46,7 +46,7 @@ Revoke all `write` permissions for user:
 Domain: `dev-c6f6btnyigx2q7v8.eu.auth0.com`
 Client ID: `PPwV1wzDOd8QujEbWCaM3R5JrFI64pUf`
 
-![img.png](img.png)
+![img.png](screenshots/img_1.png)
 
 - **Resource Owner:** The user with the email aliceauthtest@mailinator.com
 - **Client:** The application (PayBud Inc.) downloaded from the course page.
@@ -66,7 +66,7 @@ Client ID: `PPwV1wzDOd8QujEbWCaM3R5JrFI64pUf`
 10. "PayBud Inc." retrieves and displays Alice's data from Auth0 (Resource Server).
 
 ## Problem 3
-![img_1.png](img_1.png)
+![img_1.png](screenshots/img_2.png)
 
 After the Alice has provided her credentials (step 3):
 1. Auth0 (Authorization server) generates an authorization code and requests the second factor (MFA) from Alice (Resource Owner)
