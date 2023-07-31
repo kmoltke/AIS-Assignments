@@ -58,6 +58,8 @@ Revoke all `write` permissions for user:
 
 ![img.png](screenshots/img.png)
 
+See `alice-bob-acl.tar` in this directory.
+
 ## Problem 2
 ### Part 1
 Domain: `dev-c6f6btnyigx2q7v8.eu.auth0.com`
