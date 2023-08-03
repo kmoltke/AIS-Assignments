@@ -58,3 +58,17 @@ An L-observer would know if the high level variable is even if the program crash
 ### Part 10
 If `sec` is even or uneven
 
+## Problem 3:  IFC for App-Specific Security Goals
+### Part 1
+Amy - Bob - You
+
+### Part 2
+![img.png](img.png)
+
+### Part 3
+![img_3.png](img_3.png)
+
+### Part 4
+![img_1.png](img_1.png)
+
+![img_2.png](img_2.png)
