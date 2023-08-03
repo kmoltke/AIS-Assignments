@@ -35,3 +35,26 @@ _Kristian Moltke Reitzel, krei@itu.dk_
 `<M, an, Amy>`, `<M, an, me>`, `<M, an, Paragon>`, `<Paragon, ax, me>`
 - This is _plausible_ reasonable, since Paragon is a dedicated extension to Java to help implement IFC. However, Paragon might of course have unknown vulnerabilities that I'm not aware of.
 
+## Problem 2: IFC
+
+### Part 1
+The program **is** information-flow secure (i.e. noninterference). The reason is that `female` will be assigned `1` no matter what outcome.
+### Part 2
+`check` does **not** accept this program. Since a low variable is changed on a condition of a high variable.
+### Part 3
+`female = 1`. `female` will be assigned the value 1 twice.
+### Part 4
+`female = 1`. `female` will be assigned the value 1 once.
+### Part 5
+An L-observer would have to observe in-line leaks. 
+### Part 6
+An L-observer would never learn anything from the High level variable `sec`, since information never flows from high to low level AND the output of the program will never be dependant on the low level variables.
+### Part 7
+Check will also accept this program because no information from a high level variable will ever be directly or indirectly leaked to a low level variable.
+### Part 8
+If `sec` is initially even, the program will run forever (i.e. a forever loop) since `sec` will be multiplied by 2 and then modulus 2 of that value will also return 0, making the while condition true always.
+### Part 9
+An L-observer would know if the high level variable is even if the program crashes and know that it is uneven if the program completes.
+### Part 10
+If `sec` is even or uneven
+
