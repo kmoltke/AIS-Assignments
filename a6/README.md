@@ -38,7 +38,7 @@ _Kristian Moltke Reitzel, krei@itu.dk_
 ## Problem 2: IFC
 
 ### Part 1
-The program **is** information-flow secure (i.e. noninterference). The reason is that `female` will be assigned `1` no matter what outcome.
+The program **is** information-flow secure (i.e. noninterference). The reason is that `female` will be assigned `1` no matter what input. Hence, a L-observer will not learn anything.
 ### Part 2
 `check` does **not** accept this program. Since a low variable is changed on a condition of a high variable.
 ### Part 3
