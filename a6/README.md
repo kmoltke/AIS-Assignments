@@ -2,6 +2,8 @@
 
 _Kristian Moltke Reitzel, krei@itu.dk_
 
+_The report is prettier to read [here](https://github.com/kmoltke/AIS-Assignments/tree/main/a6)._
+
 ## Problem 1: Basis of Trust
 
 ### Part 1
